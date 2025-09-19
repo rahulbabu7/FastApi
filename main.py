@@ -2,7 +2,6 @@ from fastapi import FastAPI,Response,status,HTTPException
 from pydantic import BaseModel
 from random import randrange
 
-from starlette.types import HTTPExceptionHandler
 app = FastAPI()
 
 
@@ -25,9 +24,12 @@ def find_post(id:int):
     for post in my_posts:
         if post["id"] ==id:
             return post
-    
-    
-    
+
+def find_index_post(id:int):
+    for (index,post) in enumerate(my_posts):
+        if post['id'] ==id:
+            return index
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -51,20 +53,44 @@ async def create_posts(post: Post):
 @app.get(f'/post{id}')
 # def get_post(id:int,response:Response):
 def get_post(id:int):
-    
+
     post = find_post(id)
-    
+
     if not post:
         # response.status_code = status.HTTP_404_NOT_FOUND
         # return { "message":"post not found"}
-        # 
-        # simpler 
+        #
+        # simpler
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="post not found")
     return {"post":post}
 
 
-@app.put(f'/posts{id}')
-async def update_posts(id:int):
-    pass
-    # my_posts.upda
-    
+@app.put('/posts{id}')
+async def update_post(id:int,updated:Post):
+    post = find_post(id)
+
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="post not found")
+
+    post_dict = updated.model_dump()
+    index = find_index_post(id)
+    post_dict['id'] = id
+    if index is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="id not found")
+
+    my_posts[index] = post_dict
+
+    return {"message":f"post with id {id} has been updated"}
+
+@app.delete('/posts/{id}',status_code=status.HTTP_204_NO_CONTENT)
+def delete_posts(id:int):
+    #find the index in the array that has the required ID
+
+    index = find_index_post(id)
+
+
+    if index == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="id not found")
+
+    my_posts.pop(index)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
