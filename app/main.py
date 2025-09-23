@@ -1,8 +1,10 @@
 from random import randrange
-
+import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status
+from psycopg2.errors import DatabaseError
 from pydantic import BaseModel
-
+from psycopg2.extras import RealDictCursor
+import time
 app = FastAPI()
 
 
@@ -12,8 +14,26 @@ class Post(BaseModel):
     publised: bool = (
         False  # if user not provided published value then it is set to false
     )
-    rating: int | None
+    # rating: int | None
 
+while True:
+    try:
+        conn = psycopg2.connect(
+            host='0.0.0.0',  # This should work if the app and postgres are on the same network
+            database='fastapi',
+            user='admin',
+            password='admin123',
+            cursor_factory=RealDictCursor
+        )
+    
+        
+        cursor = conn.cursor()
+        print("Db up")
+        break
+    except Exception as error:
+        print("Db not connected")
+        print("error",error)
+        time.sleep(3)
 
 my_posts: list[dict[str, str | int]] = [
     {"title": "title of post 1", "content": "content of post 1", "id": 1},
@@ -40,26 +60,26 @@ async def root():
 
 @app.get("/posts")
 async def get_posts():
-    return {"data": my_posts}
+    cursor.execute("""select * from posts""")
+    posts = cursor.fetchall()
+    return {"data": posts}
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 async def create_posts(post: Post):
-    print(post)
-    print(post.model_dump())  # .dict is deprecated
-    post_dict = post.model_dump()
-    post_dict["id"] = randrange(0, 1000)
-    my_posts.append(post_dict)
-    return {"posts created successfully": post_dict}
+    
+    cursor.execute(""" INSERT INTO posts (title,content,publised) values (%s,%s,%s)""",(post.title,post.content,post.publised))
+    return {"posts created successfully"}
 
 
 @app.get(f"/post{id}")
 # def get_post(id:int,response:Response):
 def get_post(id: int):
 
-    post = find_post(id)
+    cursor.execute(f"""select * from posts where id = {id}""")
+    posts = cursor.fetchall()
 
-    if not post:
+    if not posts:
         # response.status_code = status.HTTP_404_NOT_FOUND
         # return { "message":"post not found"}
         #
@@ -67,7 +87,7 @@ def get_post(id: int):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="post not found"
         )
-    return {"post": post}
+    return {"post": posts}
 
 
 @app.put("/posts{id}")
