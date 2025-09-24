@@ -1,7 +1,6 @@
 from random import randrange
 import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status
-from psycopg2.errors import DatabaseError
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 import time
@@ -41,16 +40,16 @@ my_posts: list[dict[str, str | int]] = [
 ]
 
 
-def find_post(id: int):
-    for post in my_posts:
-        if post["id"] == id:
-            return post
+# def find_post(id: int):
+#     for post in my_posts:
+#         if post["id"] == id:
+#             return post
 
 
-def find_index_post(id: int):
-    for index, post in enumerate(my_posts):
-        if post["id"] == id:
-            return index
+# def find_index_post(id: int):
+#     for index, post in enumerate(my_posts):
+#         if post["id"] == id:
+#             return index
 
 
 @app.get("/")
@@ -69,15 +68,17 @@ async def get_posts():
 async def create_posts(post: Post):
     
     cursor.execute(""" INSERT INTO posts (title,content,publised) values (%s,%s,%s)""",(post.title,post.content,post.publised))
-    return {"posts created successfully"}
+    new_post = cursor.fetchone()
+    conn.commit()  #saving the new post to db
+    return {"posts created successfully":new_post}
 
 
 @app.get(f"/post{id}")
 # def get_post(id:int,response:Response):
 def get_post(id: int):
 
-    cursor.execute(f"""select * from posts where id = {id}""")
-    posts = cursor.fetchall()
+    cursor.execute("""select * from posts where id = %s """,(str(id),))
+    posts = cursor.fetchone()
 
     if not posts:
         # response.status_code = status.HTTP_404_NOT_FOUND
@@ -92,22 +93,13 @@ def get_post(id: int):
 
 @app.put("/posts{id}")
 async def update_post(id: int, updated: Post):
-    post = find_post(id)
-
+    cursor.execute("""update posts set title =%s, content=%s, published=%s where id = %s """,(updated.title,updated.content,updated.publised,str(id)))
+    post = cursor.fetchone()
+    conn.commit()
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="post not found"
         )
-
-    post_dict = updated.model_dump()
-    index = find_index_post(id)
-    post_dict["id"] = id
-    if index is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="id not found"
-        )
-
-    my_posts[index] = post_dict
 
     return {"message": f"post with id {id} has been updated"}
 
@@ -116,12 +108,12 @@ async def update_post(id: int, updated: Post):
 def delete_posts(id: int):
     # find the index in the array that has the required ID
 
-    index = find_index_post(id)
-
-    if index == None:
+    cursor.execute("""delete from posts where id = %s  returning *""",(str(id),))
+    post = cursor.fetchone()
+    conn.commit()
+    if post == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="id not found"
         )
 
-    my_posts.pop(index)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
