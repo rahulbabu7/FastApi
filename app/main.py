@@ -1,17 +1,25 @@
-from random import randrange
 import psycopg2
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Response, status,Depends
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 import time
+
+from . import models
+from .database import engine,get_db
+from sqlalchemy.orm import Session
+
+models.Base.metadata.create_all(bind=engine)
+
+
+
 app = FastAPI()
 
 
 class Post(BaseModel):
     title: str
     content: str
-    publised: bool = (
-        False  # if user not provided published value then it is set to false
+    published: bool = (
+        True  # if user not provided published value then it is set to True
     )
     # rating: int | None
 
@@ -24,8 +32,8 @@ while True:
             password='admin123',
             cursor_factory=RealDictCursor
         )
-    
-        
+
+
         cursor = conn.cursor()
         print("Db up")
         break
@@ -34,10 +42,10 @@ while True:
         print("error",error)
         time.sleep(3)
 
-my_posts: list[dict[str, str | int]] = [
-    {"title": "title of post 1", "content": "content of post 1", "id": 1},
-    {"title": "title of post 2", "content": "content of post 2", "id": 2},
-]
+# my_posts: list[dict[str, str | int]] = [
+#     {"title": "title of post 1", "content": "content of post 1", "id": 1},
+#     {"title": "title of post 2", "content": "content of post 2", "id": 2},
+# ]
 
 
 # def find_post(id: int):
@@ -58,18 +66,22 @@ async def root():
 
 
 @app.get("/posts")
-async def get_posts():
-    cursor.execute("""select * from posts""")
-    posts = cursor.fetchall()
+async def get_posts(db:Session = Depends(get_db)):
+    posts = db.query(models.Posts).all()  # without all() it gives sql code
     return {"data": posts}
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-async def create_posts(post: Post):
-    
-    cursor.execute(""" INSERT INTO posts (title,content,publised) values (%s,%s,%s)""",(post.title,post.content,post.publised))
-    new_post = cursor.fetchone()
-    conn.commit()  #saving the new post to db
+async def create_posts(post: Post,db:Session = Depends(get_db)):
+
+    new_post = models.Posts(**post.model_dump())  # unpacking dictionary
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)  ## similar to the returning *
+
+    # cursor.execute(""" INSERT INTO posts (title,content,publised) values (%s,%s,%s)""",(post.title,post.content,post.publised))
+    # new_post = cursor.fetchone()
+    # conn.commit()  #saving the new post to db
     return {"posts created successfully":new_post}
 
 
@@ -93,7 +105,7 @@ def get_post(id: int):
 
 @app.put("/posts{id}")
 async def update_post(id: int, updated: Post):
-    cursor.execute("""update posts set title =%s, content=%s, published=%s where id = %s """,(updated.title,updated.content,updated.publised,str(id)))
+    cursor.execute("""update posts set title =%s, content=%s, publised=%s where id = %s  returning *""",(updated.title,updated.content,updated.published,str(id)))
     post = cursor.fetchone()
     conn.commit()
     if not post:
