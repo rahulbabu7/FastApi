@@ -111,7 +111,7 @@ async def update_post(id: int, updated: Post,db:Session= Depends(get_db)):
     # conn.commit()
     # 
     post_query = db.query(models.Posts).filter(models.Posts.id ==id)  ##query for selecting the post 
-    if not post_query:
+    if not post_query.first():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="post not found"
         )
