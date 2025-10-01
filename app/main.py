@@ -1,10 +1,10 @@
 import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status,Depends
-from pydantic import BaseModel
+
 from psycopg2.extras import RealDictCursor
 import time
 
-from . import models
+from . import models,schemas
 from .database import engine,get_db
 from sqlalchemy.orm import Session
 
@@ -15,13 +15,6 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = (
-        True  # if user not provided published value then it is set to True
-    )
-    # rating: int | None
 
 while True:
     try:
@@ -65,14 +58,14 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.get("/posts")
+@app.get("/posts",response_model=list[schemas.Post])  #The list[schemas.Post] means that the response will be a list of Post objects (i.e., a list of posts will be returned as the response).
 async def get_posts(db:Session = Depends(get_db)):
     posts = db.query(models.Posts).all()  # without all() it gives sql code
-    return {"data": posts}
+    return posts
 
 
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
-async def create_posts(post: Post,db:Session = Depends(get_db)):
+@app.post("/posts", status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
+async def create_posts(post: schemas.PostCreate,db:Session = Depends(get_db)):
     new_post = models.Posts(**post.model_dump())  # unpacking dictionary
     db.add(new_post)
     db.commit()
@@ -81,10 +74,10 @@ async def create_posts(post: Post,db:Session = Depends(get_db)):
     # cursor.execute(""" INSERT INTO posts (title,content,publised) values (%s,%s,%s)""",(post.title,post.content,post.publised))
     # new_post = cursor.fetchone()
     # conn.commit()  #saving the new post to db
-    return {"posts created successfully":new_post}
+    return new_post
 
 
-@app.get(f"/post{id}")
+@app.get(f"/post{id}",response_model=schemas.Post)
 # def get_post(id:int,response:Response):
 def get_post(id: int,db:Session = Depends(get_db)):
 
@@ -101,11 +94,11 @@ def get_post(id: int,db:Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="post not found"
         )
-    return {"post": post}
+    return post
 
 
-@app.put("/posts{id}")
-async def update_post(id: int, updated: Post,db:Session= Depends(get_db)):
+@app.put("/posts{id}",response_model=schemas.Post)
+async def update_post(id: int, updated: schemas.PostUpdate,db:Session= Depends(get_db)):
     # cursor.execute("""update posts set title =%s, content=%s, publised=%s where id = %s  returning *""",(updated.title,updated.content,updated.published,str(id)))
     # post = cursor.fetchone()
     # conn.commit()
@@ -118,7 +111,7 @@ async def update_post(id: int, updated: Post,db:Session= Depends(get_db)):
     post_query.update(updated.model_dump(),synchronize_session=False)
     db.commit()
     
-    return {"message": f"post with id {id} has been updated"}
+    return post_query.first()
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
