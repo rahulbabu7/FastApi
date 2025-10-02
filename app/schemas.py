@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 #request model  from client to backend
@@ -45,4 +45,20 @@ class Post(PostBase):
     # the data comes as an object with attributes rather than dictionary keys.
     # Setting orm_mode = True allows Pydantic to convert the ORM object to a Pydantic model by using the object’s attributes.
     class Config:
-        orm_mode = True
+        # orm_mode = True     # in pydantic v1
+          from_attributes = True  # in pydantic v2
+          
+
+class UserBase(BaseModel):
+    email:EmailStr
+    password:str
+    
+class UserCreate(UserBase):
+    pass
+    
+class User(BaseModel):
+    id:int
+    email:EmailStr
+    created_at:datetime
+    class Config:
+        from_attributes = True
