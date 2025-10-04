@@ -3,7 +3,7 @@ from fastapi import  HTTPException,status,Depends,APIRouter,Response
 from .. import models,schemas
 from ..database import get_db
 from sqlalchemy.orm import Session
-
+from app.oauth2 import get_current_user
 
 
 router = APIRouter(
@@ -15,13 +15,13 @@ router = APIRouter(
 
 
 @router.get("/",response_model=list[schemas.Post])  #The list[schemas.Post] means that the response will be a list of Post objects (i.e., a list of posts will be returned as the response).
-async def get_posts(db:Session = Depends(get_db)):
+async def get_posts(db:Session = Depends(get_db),get_current_user:int = Depends(get_current_user)):
     posts = db.query(models.Posts).all()  # without all() it gives sql code
     return posts
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
-async def create_posts(post: schemas.PostCreate,db:Session = Depends(get_db)):
+async def create_posts(post: schemas.PostCreate,db:Session = Depends(get_db),get_current_user:int = Depends(get_current_user)):  #make sure that the user is loggedIn
     new_post = models.Posts(**post.model_dump())  # unpacking dictionary
     db.add(new_post)
     db.commit()
@@ -35,7 +35,7 @@ async def create_posts(post: schemas.PostCreate,db:Session = Depends(get_db)):
 
 @router.get("/{id}",response_model=schemas.Post)
 # def get_post(id:int,response:Response):
-def get_post(id: int,db:Session = Depends(get_db)):
+def get_post(id: int,db:Session = Depends(get_db),get_current_user:int = Depends(get_current_user)):
 
     # cursor.execute("""select * from posts where id = %s """,(str(id),))
     # posts = cursor.fetchone()
@@ -54,7 +54,7 @@ def get_post(id: int,db:Session = Depends(get_db)):
 
 
 @router.put("/{id}",response_model=schemas.Post)
-async def update_post(id: int, updated: schemas.PostUpdate,db:Session= Depends(get_db)):
+async def update_post(id: int, updated: schemas.PostUpdate,db:Session= Depends(get_db),get_current_user:int = Depends(get_current_user)):
     # cursor.execute("""update posts set title =%s, content=%s, publised=%s where id = %s  returning *""",(updated.title,updated.content,updated.published,str(id)))
     # post = cursor.fetchone()
     # conn.commit()
@@ -71,7 +71,7 @@ async def update_post(id: int, updated: schemas.PostUpdate,db:Session= Depends(g
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_posts(id: int,db:Session=Depends(get_db)):
+def delete_posts(id: int,db:Session=Depends(get_db),get_current_user:int = Depends(get_current_user)):
     # find the index in the array that has the required ID
 
     # cursor.execute("""delete from posts where id = %s  returning *""",(str(id),))
