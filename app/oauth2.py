@@ -41,7 +41,7 @@ def verify_access_token(token:str,credentials_exception:HTTPException):
         
         payload = jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
         
-        id :str=payload.get("user_id")
+        id :int|None =payload.get("user_id")  #But payload.get("user_id") can return None if the key doesn't exist!
         
         if id is None:
             raise credentials_exception

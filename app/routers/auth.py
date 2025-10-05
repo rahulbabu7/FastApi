@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Depends,status,HTTPException
+from fastapi import Depends,status,HTTPException,APIRouter
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.hashingPsd import verifyPassword
@@ -24,7 +24,7 @@ def login(userCredentials:OAuth2PasswordRequestForm=  Depends(),db:Session = Dep
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="user not found")
     if not verifyPassword(userCredentials.password, user.password):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="Invalid Credentials")
-        
+    
     # create token
     access_token = create_access_token(data = {"user_id":user.id})
     # return token
