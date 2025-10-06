@@ -11,6 +11,31 @@ from pydantic import BaseModel, EmailStr
 #     )
 #     # rating: int | None
 
+class UserBase(BaseModel):
+    email:EmailStr
+    password:str
+    
+class UserCreate(UserBase):
+    pass
+    
+# class UserLogin(UserBase):
+#     pass
+    
+class User(BaseModel):
+    id:int
+    email:EmailStr
+    created_at:datetime
+    class Config:
+        from_attributes = True
+        
+class Token(BaseModel):
+    access_token:str
+    token_type:str
+
+class TokenData(BaseModel):
+    id:int|None
+
+
 class PostBase(BaseModel):
     title: str
     content: str
@@ -35,6 +60,8 @@ class Post(PostBase):
     # content:str
     # published:bool
     created_at: datetime
+    user_id:int
+    user:User   # we are returning the user details like email ,id etc
     
     ## pydantic only works with dictionary. by adding the below config we can use if it is not a dictionary
     # Purpose: This is a configuration class within the Pydantic model.
@@ -49,27 +76,3 @@ class Post(PostBase):
           from_attributes = True  # in pydantic v2
           
 
-class UserBase(BaseModel):
-    email:EmailStr
-    password:str
-    
-class UserCreate(UserBase):
-    pass
-    
-# class UserLogin(UserBase):
-#     pass
-    
-class User(BaseModel):
-    id:int
-    email:EmailStr
-    created_at:datetime
-    class Config:
-        from_attributes = True
-        
-class Token(BaseModel):
-    access_token:str
-    token_type:str
-
-class TokenData(BaseModel):
-    id:int|None
-    

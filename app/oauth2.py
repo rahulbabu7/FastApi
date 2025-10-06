@@ -25,35 +25,38 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 EXPIRATION_TIME_MINUTES = int(os.getenv("EXPIRATION_TIME_MINUTES"))
 
-def create_access_token(data:dict): #payload data
-    to_encode = data.copy()
+def create_access_token(data:dict)->str: #payload data
+    to_encode:dict = data.copy()
     
     expire = datetime.now(timezone.utc) + timedelta(minutes=EXPIRATION_TIME_MINUTES)
     to_encode.update({'exp':expire})
     
-    encoded_jwt_token = jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
+    encoded_jwt_token:str = jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
     
     return encoded_jwt_token
     
 
-def verify_access_token(token:str,credentials_exception:HTTPException):
+def verify_access_token(token:str,credentials_exception:HTTPException)->TokenData:
     try:
         
         payload = jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
         
-        id :int|None =payload.get("user_id")  #But payload.get("user_id") can return None if the key doesn't exist!
+        user_id :int|None =payload.get("user_id")  #But payload.get("user_id") can return None if the key doesn't exist!
         
-        if id is None:
+        if user_id is None:
             raise credentials_exception
-        token_data = TokenData(id=id)
+        token_data = TokenData(id=user_id)
+        return token_data
     except InvalidTokenError:
         raise credentials_exception
-    return token_data
 
-def get_current_user(token:str=Depends(oauth2_scheme),db:Session=Depends(get_db)):
+def get_current_user(token:str=Depends(oauth2_scheme),db:Session=Depends(get_db))->Users:
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail=f"could not validate credentials",headers={"WWW_Authenticate":"Bearer"})
     
     
     token_data= verify_access_token(token,credentials_exception)
+    print(token_data)
     user = db.query(Users).filter(Users.id==token_data.id).first()
-    return user
+    if user is None:
+        raise credentials_exception
+    return user  # returns a Users object

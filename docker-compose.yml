@@ -28,6 +28,8 @@ services:
 
 volumes:
   postgres_data:
+    name: fastapi_postgres_data
+    external: true  # <-- Correct modern syntax
 
 networks:
   pg_network:
