@@ -5,3 +5,4 @@ sqlalchemy
 pwdlib[argon2]
 pyjwt[crypto]
 python-dotenv
+pydantic-settings
