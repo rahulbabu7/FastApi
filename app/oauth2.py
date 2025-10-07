@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from jwt.exceptions import InvalidTokenError
 from app.schemas import TokenData
-
+from .config import settings
 
 from fastapi.security import OAuth2PasswordBearer
 oauth2_scheme =  OAuth2PasswordBearer(tokenUrl='login')  # used to get the token from the request
@@ -21,9 +21,9 @@ oauth2_scheme =  OAuth2PasswordBearer(tokenUrl='login')  # used to get the token
 # get SECRET_KEY by running openssl rand -hex 32
 # 
 load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-EXPIRATION_TIME_MINUTES = int(os.getenv("EXPIRATION_TIME_MINUTES"))
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
+EXPIRATION_TIME_MINUTES =settings.expiration_time_minutes
 
 def create_access_token(data:dict)->str: #payload data
     to_encode:dict = data.copy()

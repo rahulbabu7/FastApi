@@ -1,10 +1,8 @@
-
 from fastapi import  HTTPException,status,Depends,APIRouter,Response
 from .. import models,schemas
 from ..database import get_db
 from sqlalchemy.orm import Session
 from app.oauth2 import get_current_user
-
 
 router = APIRouter(
     prefix="/posts",
@@ -13,10 +11,13 @@ router = APIRouter(
 
 
 
-
+"""
+@NOTE : Update the number of post the user can display at one time 
+"""
 @router.get("/",response_model=list[schemas.Post])  #The list[schemas.Post] means that the response will be a list of Post objects (i.e., a list of posts will be returned as the response).
-async def get_posts(db:Session = Depends(get_db),get_current_user:models.Users = Depends(get_current_user)):
-    posts = db.query(models.Posts).all()  # without all() it gives sql code
+async def get_posts(db:Session = Depends(get_db),get_current_user:models.Users = Depends(get_current_user),limit:int=10,skip:int=0,search:str|None=""):
+    # posts = db.query(models.Posts).all()  # without all() it gives sql code
+    posts = db.query(models.Posts).filter(models.Posts.title.contains(search)).limit(limit).offset(skip).all()    # we are getting the post which contains *** in the title and limiting the number of posts and also we can skip the first n posts
     # posts = db.query(models.Posts).filter(models.Posts.user_id==get_current_user.id).all()  # this gives only the users post
     return posts
 
