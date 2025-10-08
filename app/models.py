@@ -1,3 +1,4 @@
+from fastapi import FastAPI
 from sqlalchemy.sql.expression import text
 from .database import Base
 from sqlalchemy import TIMESTAMP, Column,Integer,String,Boolean
@@ -30,3 +31,13 @@ class Users(Base):
     created_at = Column(TIMESTAMP(timezone=True),nullable=False,server_default=text('now()'))    #default to created now ()
     # define relationship to Posts
     posts = relationship("Posts", back_populates="user")
+
+
+class Votes(Base):
+    __tablename__="votes"
+    user_id = Column(Integer,ForeignKey('users.id',ondelete="CASCADE"),primary_key=True)
+    post_id = Column(Integer,ForeignKey('Posts.id',ondelete="CASCADE"),primary_key=True)
+    #here we are providing the primary key as a combination of these 2
+    # This gives error if 2 of these comes same in 2 rows
+    # seperate values no error but a combination of these on 2 rows will violate the primarykey error
+    

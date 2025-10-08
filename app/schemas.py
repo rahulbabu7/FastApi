@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+# from pydantic.types import conint
 
 
 #request model  from client to backend
@@ -14,19 +15,20 @@ from pydantic import BaseModel, EmailStr
 class UserBase(BaseModel):
     email:EmailStr
     password:str
-    
+
 class UserCreate(UserBase):
     pass
-    
+
 # class UserLogin(UserBase):
 #     pass
-    
+
 class User(BaseModel):
     id:int
     email:EmailStr
     created_at:datetime
     class Config:
         from_attributes = True
+
         
 class Token(BaseModel):
     access_token:str
@@ -62,11 +64,11 @@ class Post(PostBase):
     created_at: datetime
     user_id:int
     user:User   # we are returning the user details like email ,id etc
-    
+
     ## pydantic only works with dictionary. by adding the below config we can use if it is not a dictionary
     # Purpose: This is a configuration class within the Pydantic model.
-    # orm_mode = True:   
-    # When you set orm_mode = True, Pydantic will treat objects as dictionaries, allowing them to be serialized from ORM models (like SQLAlchemy or Django models) 
+    # orm_mode = True:
+    # When you set orm_mode = True, Pydantic will treat objects as dictionaries, allowing them to be serialized from ORM models (like SQLAlchemy or Django models)
     # to Pydantic models.
     # By default, Pydantic assumes data comes in the form of a dictionary, but if you’re using an ORM model (like an SQLAlchemy model),
     # the data comes as an object with attributes rather than dictionary keys.
@@ -74,5 +76,10 @@ class Post(PostBase):
     class Config:
         # orm_mode = True     # in pydantic v1
           from_attributes = True  # in pydantic v2
-          
 
+
+
+class Vote(BaseModel):
+    post_id:int
+    # dir: conint(ge=0,le=1)  # only allows 0 or 1
+    dir:int = Field(...,ge=0,le=1,description="0 = remove vote, 1 = upvote")

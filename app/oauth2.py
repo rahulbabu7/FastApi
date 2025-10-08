@@ -2,7 +2,6 @@ from fastapi import Depends, HTTPException,status
 import jwt
 from datetime import datetime,timedelta,timezone
 from dotenv import load_dotenv
-import os
 from app.models import Users
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -55,7 +54,6 @@ def get_current_user(token:str=Depends(oauth2_scheme),db:Session=Depends(get_db)
     
     
     token_data= verify_access_token(token,credentials_exception)
-    print(token_data)
     user = db.query(Users).filter(Users.id==token_data.id).first()
     if user is None:
         raise credentials_exception

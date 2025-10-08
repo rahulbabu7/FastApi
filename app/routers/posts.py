@@ -19,6 +19,8 @@ async def get_posts(db:Session = Depends(get_db),get_current_user:models.Users =
     # posts = db.query(models.Posts).all()  # without all() it gives sql code
     posts = db.query(models.Posts).filter(models.Posts.title.contains(search)).limit(limit).offset(skip).all()    # we are getting the post which contains *** in the title and limiting the number of posts and also we can skip the first n posts
     # posts = db.query(models.Posts).filter(models.Posts.user_id==get_current_user.id).all()  # this gives only the users post
+    results = db.query(models.Posts).join(models.Users,models.Posts.user_id == models.Users.id,isouter=True)
+    print(results.all())
     return posts
 
 
