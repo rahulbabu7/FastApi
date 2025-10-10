@@ -1,4 +1,5 @@
 from fastapi import  HTTPException,status,Depends,APIRouter,Response
+from sqlalchemy import func
 from .. import models,schemas
 from ..database import get_db
 from sqlalchemy.orm import Session
@@ -14,14 +15,43 @@ router = APIRouter(
 """
 @NOTE : Update the number of post the user can display at one time 
 """
-@router.get("/",response_model=list[schemas.Post])  #The list[schemas.Post] means that the response will be a list of Post objects (i.e., a list of posts will be returned as the response).
+@router.get("/",response_model=list[schemas.PostVote])  #The list[schemas.Post] means that the response will be a list of Post objects (i.e., a list of posts will be returned as the response).
 async def get_posts(db:Session = Depends(get_db),get_current_user:models.Users = Depends(get_current_user),limit:int=10,skip:int=0,search:str|None=""):
     # posts = db.query(models.Posts).all()  # without all() it gives sql code
-    posts = db.query(models.Posts).filter(models.Posts.title.contains(search)).limit(limit).offset(skip).all()    # we are getting the post which contains *** in the title and limiting the number of posts and also we can skip the first n posts
+    # posts = db.query(models.Posts).filter(models.Posts.title.contains(search)).limit(limit).offset(skip).all()    # we are getting the post which contains *** in the title and limiting the number of posts and also we can skip the first n posts
     # posts = db.query(models.Posts).filter(models.Posts.user_id==get_current_user.id).all()  # this gives only the users post
-    results = db.query(models.Posts).join(models.Users,models.Posts.user_id == models.Users.id,isouter=True)
-    print(results.all())
-    return posts
+    results = db.query(models.Posts,func.count(models.Votes.post_id).label("votes")).join(models.Votes,models.Posts.id ==models.Votes.post_id,isouter=True).group_by(models.Posts.id).filter(models.Posts.title.contains(search)).limit(limit).offset(skip).all()
+    
+#     Query returns:
+#     [
+#     (<Posts object>, 5),   # TUPLE with 2 items
+#     (<Posts object>, 3),
+#     (<Posts object>, 0),
+# ]
+#     Schema expects:
+#     class PostVote(BaseModel):
+#     post: Post        # Named field
+#     votes: int        # Named field
+
+    
+# Why it breaks:
+
+# Query returns: Tuples (post, votes)
+# Schema expects: Objects/dicts with .post and .votes attributes
+# from_attributes = True doesn't help because tuples don't have named attributes
+# You need: {"post": post, "votes": votes}
+
+# Transformation needed! ❌
+# Summary
+# ScenarioQuery ReturnsSchema ExpectsWorks?BeforePosts ORM objectPost pydantic model✅ Yes (auto-converted)After(Posts, int) tuplePostVote with .post & .votes❌ No (tuple vs dict)
+# The key difference:
+
+# Single ORM object → Auto-converts with from_attributes = True
+# Tuple → Needs manual transformation to dict
+
+# That's why you need the list comprehension for the votes endpoint but didn't need it before!
+# Transform tuple → dictionary
+    return [{"post":post,"votes":vote} for post,vote in results]
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
@@ -37,16 +67,16 @@ async def create_posts(post: schemas.PostCreate,db:Session = Depends(get_db),get
     return new_post
 
 
-@router.get("/{id}",response_model=schemas.Post)
+@router.get("/{id}",response_model=schemas.PostVote)
 # def get_post(id:int,response:Response):
 def get_post(id: int,db:Session = Depends(get_db),get_current_user:models.Users = Depends(get_current_user)):
 
     # cursor.execute("""select * from posts where id = %s """,(str(id),))
     # posts = cursor.fetchone()
 
-    post = db.query(models.Posts).filter(models.Posts.id ==id).first()
+    result  = db.query(models.Posts,func.count(models.Votes.post_id).label("votes")).join(models.Votes,models.Posts.id ==models.Votes.post_id,isouter=True).group_by(models.Posts.id).filter(models.Posts.id ==id).first()
 
-    if not post:
+    if not result:
         # response.status_code = status.HTTP_404_NOT_FOUND
         # return { "message":"post not found"}
         #
@@ -54,7 +84,8 @@ def get_post(id: int,db:Session = Depends(get_db),get_current_user:models.Users 
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="post not found"
         )
-    return post
+    post,votes = result  #Unpack and transform - post, votes = result then return as dict
+    return {"post":post,"votes":votes}
 
 
 @router.put("/{id}",response_model=schemas.Post)

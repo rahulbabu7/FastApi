@@ -77,8 +77,24 @@ class Post(PostBase):
         # orm_mode = True     # in pydantic v1
           from_attributes = True  # in pydantic v2
 
+class PostVote(BaseModel):
+    post:Post
+    votes:int
+    class Config:
+        from_attributes = True
+#      since we deal with the convertion of object to dictionary we can comment the config class. the config class can be usefull when we have 1
+#      Why it worked:
+
+# Query returns: Posts ORM objects
+# Schema expects: Post pydantic model
+# from_attributes = True tells Pydantic: "Convert ORM object attributes to Pydantic model"
+# FastAPI automatically does: Post.from_orm(posts_object) (or Post.model_validate() in Pydantic v2)
+
+# No transformation needed! ✅
 
 
+
+    
 class Vote(BaseModel):
     post_id:int
     # dir: conint(ge=0,le=1)  # only allows 0 or 1
