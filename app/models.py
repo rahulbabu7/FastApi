@@ -40,4 +40,3 @@ class Votes(Base):
     #here we are providing the primary key as a combination of these 2
     # This gives error if 2 of these comes same in 2 rows
     # seperate values no error but a combination of these on 2 rows will violate the primarykey error
-    
