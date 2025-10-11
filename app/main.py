@@ -3,12 +3,22 @@ from fastapi import FastAPI
 # from . import models
 # from .database import engine
 from .routers import posts,user,auth,vote
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings  # schema for over env
 
 #models.Base.metadata.create_all(bind=engine) #create db tables
 app = FastAPI()
 
+
+origins = [settings.frontend_url]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # my_posts: list[dict[str, str | int]] = [
 #     {"title": "title of post 1", "content": "content of post 1", "id": 1},
